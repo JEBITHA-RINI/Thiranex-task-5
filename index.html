@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WonderKart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; min-height: 100vh; transition: background 1s ease; }
+        .auth-bg { background: url('0000.jpg') no-repeat center center fixed; background-size: cover; }
+        .dashboard-bg { animation: bgLoop 20s infinite; background-size: cover; background-position: center; }
+        @keyframes bgLoop {
+            0%, 24% { background-image: url('0011.jpg'); }
+            25%, 49% { background-image: url('0022.jpg'); }
+            50%, 74% { background-image: url('0033.jpg'); }
+            75%, 100% { background-image: url('0044.jpg'); }
+        }
+        .hidden-view { display: none !important; }
+        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border-radius: 20px; padding: 1.5rem; }
+        .page { position: absolute; width: 100%; top: 0; left: 0; padding: 2rem; }
+    </style>
+</head>
+<body id="pageBody" class="auth-bg">
+
+    <div id="authContainer" class="flex flex-col items-center justify-center min-h-screen">
+        <form id="signup" class="glass-card w-80 shadow-xl" onsubmit="event.preventDefault(); startDashboard();">
+            <h2 class="text-2xl font-bold mb-4 text-center">Sign Up</h2>
+            <input type="text" placeholder="email" required class="w-full mb-3 p-3 border rounded-xl">
+            <button type="submit" class="w-full bg-black text-white py-3 rounded-full">Enter WonderKart</button>
+        </form>
+    </div>
+
+    <div id="dashboard" class="hidden-view page">
+        <nav class="glass-card flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold italic text-rose-500">WonderKart</h1>
+            <div class="flex gap-4 text-2xl">
+                <button onclick="showPage('dashboard')">🏠</button>
+                <button onclick="showPage('cartPage')">🛒</button>
+                <button onclick="showPage('profilePage')">👤</button>
+            </div>
+        </nav>
+        <div id="toyGrid" class="grid grid-cols-2 gap-6"></div>
+    </div>
+
+    <div id="cartPage" class="hidden-view page">
+        <button onclick="showPage('dashboard')" class="mb-4 bg-gray-800 text-white px-6 py-2 rounded-full font-bold">← Back</button>
+        <div class="glass-card">
+            <h2 class="text-2xl font-bold mb-4">Your Cart</h2>
+            <div id="cartItems"></div>
+            <p id="totalAmt" class="font-bold text-xl mt-4"></p>
+            <button onclick="processPayment()" class="mt-4 bg-green-600 text-white px-6 py-2 rounded-full">Proceed to Pay</button>
+        </div>
+    </div>
+
+    <div id="profilePage" class="hidden-view page">
+        <button onclick="showPage('dashboard')" class="mb-4 bg-gray-800 text-white px-6 py-2 rounded-full font-bold">← Back</button>
+        <div class="glass-card">
+            <h2 class="text-2xl font-bold mb-4">My Orders</h2>
+            <div id="orderHistory"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDM26FN9Bho7NZNthJL-IkQCqr9AX5OELE",
+            authDomain: "wonderkart-93b04.firebaseapp.com",
+            projectId: "wonderkart-93b04",
+            storageBucket: "wonderkart-93b04.firebasestorage.app",
+            messagingSenderId: "406053696580",
+            appId: "1:406053696580:web:7f12d1c88d532406b3b811",
+            measurementId: "G-4T5W0KVMGN"
+        };
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+
+        // Your application functions
+        window.startDashboard = function() {
+            document.getElementById('authContainer').classList.add('hidden-view');
+            document.getElementById('dashboard').classList.remove('hidden-view');
+            document.getElementById('pageBody').classList.remove('auth-bg');
+            document.getElementById('pageBody').classList.add('dashboard-bg');
+            renderToys();
+        }
+
+        window.renderToys = function() {
+            const grid = document.getElementById('toyGrid');
+            grid.innerHTML = "";
+            for(let i=1; i<=20; i++) {
+                const price = (Math.random() * 90 + 10).toFixed(2);
+                grid.innerHTML += `<div class="glass-card text-center">
+                    <img src="toy${i}.jpg" alt="Toy ${i}" class="w-full h-40 object-contain mb-2 rounded-xl bg-white/50">
+                    <h3 class="font-bold">Toy Model ${i}</h3>
+                    <p>$${price}</p>
+                    <button onclick="addToCart('Toy ${i}', ${price})" class="mt-2 bg-black text-white px-6 py-1 rounded-full">Add to Cart</button>
+                </div>`;
+            }
+        }
+
+        window.showPage = function(id) {
+            document.getElementById('dashboard').classList.add('hidden-view');
+            document.getElementById('cartPage').classList.add('hidden-view');
+            document.getElementById('profilePage').classList.add('hidden-view');
+            document.getElementById(id).classList.remove('hidden-view');
+            if(id === 'cartPage') renderCart();
+            if(id === 'profilePage') renderProfile();
+        }
+
+        window.addToCart = function(name, price) {
+            let cart = JSON.parse(localStorage.getItem('myCart')) || [];
+            cart.push({name, price: parseFloat(price)});
+            localStorage.setItem('myCart', JSON.stringify(cart));
+            alert("Added to Cart!");
+        }
+
+        function renderCart() {
+            let cart = JSON.parse(localStorage.getItem('myCart')) || [];
+            document.getElementById('cartItems').innerHTML = cart.map(i => `<div>${i.name} - $${i.price.toFixed(2)}</div>`).join('');
+            document.getElementById('totalAmt').innerText = "Total: $" + cart.reduce((a, b) => a + b.price, 0).toFixed(2);
+        }
+
+        window.processPayment = function() {
+            alert("Processing Payment...");
+            setTimeout(() => {
+                let cart = JSON.parse(localStorage.getItem('myCart')) || [];
+                let history = JSON.parse(localStorage.getItem('myHistory')) || [];
+                const newOrders = cart.map(item => ({...item, deliveryDays: Math.floor(Math.random() * 5) + 3}));
+                localStorage.setItem('myHistory', JSON.stringify([...history, ...newOrders]));
+                localStorage.removeItem('myCart');
+                alert("Payment Successful!");
+                showPage('profilePage');
+            }, 3000);
+        }
+
+        function renderProfile() {
+            let history = JSON.parse(localStorage.getItem('myHistory')) || [];
+            document.getElementById('orderHistory').innerHTML = history.map(i => 
+                `<div class="mb-2 p-2 bg-white/50 rounded">✅ ${i.name} - Status: Paid. Delivered within ${i.deliveryDays} days.</div>`
+            ).join('');
+        }
+    </script>
+</body>
+</html>
